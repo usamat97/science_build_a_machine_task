@@ -1,0 +1,7 @@
+services:
+  test:
+    build: .
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: make score
