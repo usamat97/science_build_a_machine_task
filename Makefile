@@ -20,8 +20,8 @@ sw:
 # Candidate: replace this with your Verilator build + run command.
 # Must print: HW_OPS_PER_SEC=<float>
 hw:
-	$(VERILATOR) --binary -sv --top-module not_engine_tb accelerator.sv not_engine.sv not_engine_tb.sv
-	./obj_dir/Vnot_engine_tb
+	$(VERILATOR) --binary -sv --top-module fir_hw_tb accelerator.sv fir_hw.sv fir_hw_tb.sv
+	./obj_dir/Vfir_hw_tb
 
 # -- Synthesis area check (Lattice ECP5 LFE5U-85F) --
 SLICE_LIMIT = 10000
@@ -55,9 +55,9 @@ sys.exit(0 if ok else 1)"
 # -- Verify hardware matches software --
 # Candidate: replace this with your verification approach.
 verify:
-	@echo "TODO: implement make verify for your design."
-	@echo "Run both software and hardware on the same input, diff outputs."
-	@exit 1
+# 	diff -u sw_output.txt hw_output.txt | head -40
+	cmp -s sw_output.txt hw_output.txt
+	@echo "VERIFY: PASS"
 
 # -- Full score --
 score: sw hw verify
@@ -67,4 +67,4 @@ score: sw hw verify
 	@echo "  SPEEDUP = HW_OPS_PER_SEC / SW_OPS_PER_SEC"
 
 clean:
-	rm -rf obj_dir/ synth.json synth.log utilization.json _synth_gen.ys
+	rm -rf obj_dir/ synth.json synth.log utilization.json _synth_gen.ys fir_sw sw_output.txt hw_output.txt
