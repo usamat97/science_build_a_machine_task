@@ -25,6 +25,8 @@ module accelerator (
     // modules, or restructure entirely. This template is a starting
     // point, not a requirement.
     not_engine u_not_engine (
+        .clk      (clk),
+        .rst_n    (rst_n),
         .in_data  (r_data),
         .out_data (design_out)
     );
@@ -35,25 +37,34 @@ module accelerator (
     reg        r_last;
     wire [63:0] design_out;
 
-    
+    reg [9:0]  valid_pipe;
+    reg [9:0]  last_pipe;
 
     always @(posedge clk) begin
         if (!rst_n) begin
             r_data  <= 64'd0;
             r_valid <= 1'b0;
             r_last  <= 1'b0;
+            valid_pipe <= 10'd0;
+            last_pipe  <= 10'd0;
         end else if (s_axis_tvalid && s_axis_tready) begin
             r_data  <= s_axis_tdata;
             r_valid <= 1'b1;
             r_last  <= s_axis_tlast;
         end else if (m_axis_tready) begin
             r_valid <= 1'b0;
+            r_last  <= 1'b0;
+        end
+
+        if (rst_n) begin
+            valid_pipe <= {valid_pipe[8:0], r_valid};
+            last_pipe  <= {last_pipe[8:0], r_last};
         end
     end
 
     assign s_axis_tready = !r_valid || m_axis_tready;
     assign m_axis_tdata  = design_out;
-    assign m_axis_tvalid = r_valid;
-    assign m_axis_tlast  = r_last;
+    assign m_axis_tvalid = valid_pipe[9];
+    assign m_axis_tlast  = last_pipe[9];
 
 endmodule

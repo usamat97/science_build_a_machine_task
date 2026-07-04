@@ -13,9 +13,8 @@ SV_SOURCES := $(filter-out %_tb.sv %_test.sv, $(wildcard *.sv))
 # Use whatever language and flags you want.
 # Must print: SW_OPS_PER_SEC=<float>
 sw:
-	@echo "TODO: implement make sw for your design."
-	@echo "Build and run your software baseline, print SW_OPS_PER_SEC=<float>."
-	@exit 1
+	g++ -O3 -std=c++17 -Wall -Wextra fir_sw.cpp -o fir_sw
+	./fir_sw
 
 # -- Hardware accelerator --
 # Candidate: replace this with your Verilator build + run command.
@@ -23,12 +22,6 @@ sw:
 hw:
 	$(VERILATOR) --binary -sv --top-module not_engine_tb accelerator.sv not_engine.sv not_engine_tb.sv
 	./obj_dir/Vnot_engine_tb
-
-# run-not:
-# 	$(MAKE) clean
-# 	$(MAKE) synth
-# 	$(VERILATOR) --binary -sv --top-module not_engine_tb accelerator.sv not_engine.sv not_engine_tb.sv
-# 	./obj_dir/Vnot_engine_tb
 
 # -- Synthesis area check (Lattice ECP5 LFE5U-85F) --
 SLICE_LIMIT = 10000
