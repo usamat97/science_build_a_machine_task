@@ -4,7 +4,7 @@ module fir_hw_tb;
 
     localparam int CHANNELS   = 4;
     localparam int TAPS       = 16;
-    localparam int NUM_FRAMES = 16384;
+    localparam int NUM_FRAMES = 1024;
     localparam int OUT_FRAMES = NUM_FRAMES - TAPS + 1;
     localparam real CLK_HZ    = 200000000.0;
 
@@ -47,10 +47,10 @@ module fir_hw_tb;
         .m_axis_tlast(m_axis_tlast)
     );
 
-    always #5 clk = ~clk;
+    always #2.5 clk = ~clk;
 
     initial begin
-        $readmemh("fir_input.txt", input_words);
+        $readmemh("fir_input_1024.txt", input_words);
 
         hw_file = $fopen("hw_output.txt", "w");
         if (hw_file == 0) begin

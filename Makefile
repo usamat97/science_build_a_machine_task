@@ -14,14 +14,14 @@ SV_SOURCES := $(filter-out %_tb.sv %_test.sv, $(wildcard *.sv))
 # Must print: SW_OPS_PER_SEC=<float>
 sw:
 	g++ -O3 -std=c++17 -Wall -Wextra fir_sw.cpp -o fir_sw
-	./fir_sw
+	./fir_sw | tee sw_metrics.txt
 
 # -- Hardware accelerator --
 # Candidate: replace this with your Verilator build + run command.
 # Must print: HW_OPS_PER_SEC=<float>
 hw:
 	$(VERILATOR) --binary -sv --top-module fir_hw_tb accelerator.sv fir_hw.sv fir_hw_tb.sv
-	./obj_dir/Vfir_hw_tb
+	./obj_dir/Vfir_hw_tb | tee hw_metrics.txt
 
 # -- Synthesis area check (Lattice ECP5 LFE5U-85F) --
 SLICE_LIMIT = 10000
@@ -63,8 +63,15 @@ verify:
 score: sw hw verify
 	@echo ""
 	@echo "--- Scoring ---"
-	@echo "Run 'make sw' and 'make hw' above, then compute:"
-	@echo "  SPEEDUP = HW_OPS_PER_SEC / SW_OPS_PER_SEC"
+	@python3 -c "\
+import re; \
+sw_txt=open('sw_metrics.txt').read(); \
+hw_txt=open('hw_metrics.txt').read(); \
+sw=float(re.search(r'SW_OPS_PER_SEC=([0-9.]+)', sw_txt).group(1)); \
+hw=float(re.search(r'HW_OPS_PER_SEC=([0-9.]+)', hw_txt).group(1)); \
+print('SW_OPS_PER_SEC=%.2f' % sw); \
+print('HW_OPS_PER_SEC=%.2f' % hw); \
+print('SPEEDUP=%.4fx' % (hw/sw));"
 
 clean:
 	rm -rf obj_dir/ synth.json synth.log utilization.json _synth_gen.ys fir_sw sw_output.txt hw_output.txt

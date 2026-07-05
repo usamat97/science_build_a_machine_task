@@ -13,9 +13,9 @@ static constexpr int TAPS = 16;
 static constexpr int REPEAT = 200;
 
 int main() {
-    std::ifstream input_file("fir_input.txt");
+    std::ifstream input_file("fir_input_1024.txt");
     if (!input_file) {
-        std::fprintf(stderr, "ERROR: could not open fir_input.txt\n");
+        std::fprintf(stderr, "ERROR: could not open fir_input_1024.txt\n");
         return 1;
     }
 

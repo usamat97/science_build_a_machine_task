@@ -43,38 +43,15 @@ module fir_hw (
     reg signed [15:0] x3 [0:TAPS-1];
 
     reg [5:0] sample_count;
-    reg       valid_d;
-    reg       last_d;
     integer i;
 
-    wire signed [31:0] y0;
-    wire signed [31:0] y1;
-    wire signed [31:0] y2;
-    wire signed [31:0] y3;
-
-    assign y0 =
-        x0[0]  * C0  + x0[1]  * C1  + x0[2]  * C2  + x0[3]  * C3  +
-        x0[4]  * C4  + x0[5]  * C5  + x0[6]  * C6  + x0[7]  * C7  +
-        x0[8]  * C8  + x0[9]  * C9  + x0[10] * C10 + x0[11] * C11 +
-        x0[12] * C12 + x0[13] * C13 + x0[14] * C14 + x0[15] * C15;
-
-    assign y1 =
-        x1[0]  * C0  + x1[1]  * C1  + x1[2]  * C2  + x1[3]  * C3  +
-        x1[4]  * C4  + x1[5]  * C5  + x1[6]  * C6  + x1[7]  * C7  +
-        x1[8]  * C8  + x1[9]  * C9  + x1[10] * C10 + x1[11] * C11 +
-        x1[12] * C12 + x1[13] * C13 + x1[14] * C14 + x1[15] * C15;
-
-    assign y2 =
-        x2[0]  * C0  + x2[1]  * C1  + x2[2]  * C2  + x2[3]  * C3  +
-        x2[4]  * C4  + x2[5]  * C5  + x2[6]  * C6  + x2[7]  * C7  +
-        x2[8]  * C8  + x2[9]  * C9  + x2[10] * C10 + x2[11] * C11 +
-        x2[12] * C12 + x2[13] * C13 + x2[14] * C14 + x2[15] * C15;
-
-    assign y3 =
-        x3[0]  * C0  + x3[1]  * C1  + x3[2]  * C2  + x3[3]  * C3  +
-        x3[4]  * C4  + x3[5]  * C5  + x3[6]  * C6  + x3[7]  * C7  +
-        x3[8]  * C8  + x3[9]  * C9  + x3[10] * C10 + x3[11] * C11 +
-        x3[12] * C12 + x3[13] * C13 + x3[14] * C14 + x3[15] * C15;
+    function automatic signed [31:0] mul16;
+        input signed [15:0] a;
+        input signed [15:0] b;
+        begin
+            mul16 = $signed({{16{a[15]}}, a}) * $signed({{16{b[15]}}, b});
+        end
+    endfunction
 
     always @(posedge clk) begin
         if (!rst_n) begin
@@ -86,20 +63,40 @@ module fir_hw (
             end
 
             sample_count <= 6'd0;
-            valid_d      <= 1'b0;
-            last_d       <= 1'b0;
             out_valid    <= 1'b0;
             out_last     <= 1'b0;
             out_data     <= 128'd0;
         end else begin
-            out_valid <= valid_d;
-            out_last  <= last_d;
-            out_data  <= {y3, y2, y1, y0};
-
-            valid_d <= 1'b0;
-            last_d  <= 1'b0;
+            out_valid <= 1'b0;
+            out_last  <= 1'b0;
 
             if (in_valid) begin
+                if (sample_count >= 6'd15) begin
+                    out_valid <= 1'b1;
+                    out_last  <= in_last;
+                    out_data  <= {
+                        mul16(sample_ch3, C0) + mul16(x3[0], C1) + mul16(x3[1], C2) + mul16(x3[2], C3) +
+                        mul16(x3[3], C4) + mul16(x3[4], C5) + mul16(x3[5], C6) + mul16(x3[6], C7) +
+                        mul16(x3[7], C8) + mul16(x3[8], C9) + mul16(x3[9], C10) + mul16(x3[10], C11) +
+                        mul16(x3[11], C12) + mul16(x3[12], C13) + mul16(x3[13], C14) + mul16(x3[14], C15),
+
+                        mul16(sample_ch2, C0) + mul16(x2[0], C1) + mul16(x2[1], C2) + mul16(x2[2], C3) +
+                        mul16(x2[3], C4) + mul16(x2[4], C5) + mul16(x2[5], C6) + mul16(x2[6], C7) +
+                        mul16(x2[7], C8) + mul16(x2[8], C9) + mul16(x2[9], C10) + mul16(x2[10], C11) +
+                        mul16(x2[11], C12) + mul16(x2[12], C13) + mul16(x2[13], C14) + mul16(x2[14], C15),
+
+                        mul16(sample_ch1, C0) + mul16(x1[0], C1) + mul16(x1[1], C2) + mul16(x1[2], C3) +
+                        mul16(x1[3], C4) + mul16(x1[4], C5) + mul16(x1[5], C6) + mul16(x1[6], C7) +
+                        mul16(x1[7], C8) + mul16(x1[8], C9) + mul16(x1[9], C10) + mul16(x1[10], C11) +
+                        mul16(x1[11], C12) + mul16(x1[12], C13) + mul16(x1[13], C14) + mul16(x1[14], C15),
+
+                        mul16(sample_ch0, C0) + mul16(x0[0], C1) + mul16(x0[1], C2) + mul16(x0[2], C3) +
+                        mul16(x0[3], C4) + mul16(x0[4], C5) + mul16(x0[5], C6) + mul16(x0[6], C7) +
+                        mul16(x0[7], C8) + mul16(x0[8], C9) + mul16(x0[9], C10) + mul16(x0[10], C11) +
+                        mul16(x0[11], C12) + mul16(x0[12], C13) + mul16(x0[13], C14) + mul16(x0[14], C15)
+                    };
+                end
+
                 for (i = TAPS-1; i > 0; i = i - 1) begin
                     x0[i] <= x0[i-1];
                     x1[i] <= x1[i-1];
@@ -114,11 +111,6 @@ module fir_hw (
 
                 if (sample_count < 6'd16) begin
                     sample_count <= sample_count + 1'b1;
-                end
-
-                if (sample_count >= 6'd15) begin
-                    valid_d <= 1'b1;
-                    last_d  <= in_last;
                 end
             end
         end
