@@ -37,18 +37,27 @@ synth: $(SV_SOURCES)
 	$(YOSYS) -s _synth_gen.ys -l synth.log -q
 	@rm -f _synth_gen.ys
 	@python3 -c "\
-import json, sys; \
+import json, sys, math; \
 data = json.load(open('utilization.json')); \
 mods = data.get('modules', {}); \
-top = mods.get('$(TOP_MODULE)', mods.get('\\\\$(TOP_MODULE)', {})); \
+top = mods.get('$(TOP_MODULE)', mods.get('\\\\$(TOP_MODULE)', data.get('design', {}))); \
 cells = top.get('num_cells_by_type', {}); \
-slices = cells.get('TRELLIS_SLICE', 0); \
+lut4s = cells.get('LUT4', 0); \
+ffs = cells.get('TRELLIS_FF', 0); \
+ccu = cells.get('CCU2C', 0); \
+pfumx = cells.get('PFUMX', 0); \
+l6mux = cells.get('L6MUX21', 0); \
 dsps = cells.get('MULT18X18D', 0); \
 brams = cells.get('DP16KD', 0); \
-print('Slices (TRELLIS_SLICE): %d / $(SLICE_LIMIT)  (~%d LUT4s)' % (slices, slices * 2)); \
+approx_slices = (lut4s + 1) // 2; \
+print('LUT4s:                  %d / %d' % (lut4s, $(SLICE_LIMIT) * 2)); \
+print('Approx slices:          %d / $(SLICE_LIMIT)' % approx_slices); \
+print('FFs (TRELLIS_FF):       %d' % ffs); \
+print('Carry cells (CCU2C):    %d' % ccu); \
+print('Muxes (PFUMX/L6MUX21):  %d / %d' % (pfumx, l6mux)); \
 print('DSPs (MULT18X18D):      %d / $(DSP_LIMIT)' % dsps); \
 print('BRAMs (DP16KD):         %d / $(BRAM_LIMIT)' % brams); \
-ok = slices <= $(SLICE_LIMIT) and dsps <= $(DSP_LIMIT) and brams <= $(BRAM_LIMIT); \
+ok = approx_slices <= $(SLICE_LIMIT) and dsps <= $(DSP_LIMIT) and brams <= $(BRAM_LIMIT); \
 print('SYNTH: %s' % ('PASS' if ok else 'FAIL')); \
 sys.exit(0 if ok else 1)"
 
