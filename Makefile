@@ -2,26 +2,32 @@ VERILATOR   = verilator
 YOSYS       = yosys
 TOP_MODULE  = accelerator
 
+HW_SRC_DIR  = hw/src
+HW_OUT_DIR  = hw/output
+SW_SRC_DIR  = sw/src
+SW_OUT_DIR  = sw/output
+SYNTH_DIR   = synthesis
+SIM_DIR     = sim
+
 # Candidate: add your .sv files here or use the wildcard.
 # Testbench files (*_tb.sv, *_test.sv) are excluded automatically.
-SV_SOURCES := $(filter-out %_tb.sv %_test.sv, $(wildcard *.sv))
+SV_SOURCES := $(filter-out %_tb.sv %_test.sv, $(wildcard $(HW_SRC_DIR)/*.sv))
 
 .PHONY: sw hw synth verify score clean
 
 # -- Software baseline --
-# Candidate: replace this with your build + run command.
-# Use whatever language and flags you want.
 # Must print: SW_OPS_PER_SEC=<float>
 sw:
-	g++ -O3 -std=c++17 -Wall -Wextra fir_sw.cpp -o fir_sw
-	./fir_sw | tee sw_metrics.txt
+	mkdir -p $(SW_OUT_DIR)
+	g++ -O3 -std=c++17 -Wall -Wextra $(SW_SRC_DIR)/fir_sw.cpp -o $(SW_OUT_DIR)/fir_sw
+	./$(SW_OUT_DIR)/fir_sw | tee $(SW_OUT_DIR)/sw_metrics.txt
 
 # -- Hardware accelerator --
-# Candidate: replace this with your Verilator build + run command.
 # Must print: HW_OPS_PER_SEC=<float>
 hw:
-	$(VERILATOR) --binary -sv --top-module fir_hw_tb accelerator.sv fir_hw.sv fir_hw_tb.sv
-	./obj_dir/Vfir_hw_tb | tee hw_metrics.txt
+	mkdir -p $(HW_OUT_DIR)
+	$(VERILATOR) --binary -sv --Mdir $(SIM_DIR) --top-module fir_hw_tb $(HW_SRC_DIR)/accelerator.sv $(HW_SRC_DIR)/fir_hw.sv $(HW_SRC_DIR)/fir_hw_tb.sv
+	./$(SIM_DIR)/Vfir_hw_tb | tee $(HW_OUT_DIR)/hw_metrics.txt
 
 # -- Synthesis area check (Lattice ECP5 LFE5U-85F) --
 SLICE_LIMIT = 10000
@@ -29,16 +35,17 @@ DSP_LIMIT  = 156
 BRAM_LIMIT = 208
 
 synth: $(SV_SOURCES)
-	@echo "read_verilog -sv $(SV_SOURCES)" > _synth_gen.ys
-	@echo "hierarchy -check -top $(TOP_MODULE)" >> _synth_gen.ys
-	@echo "proc; flatten; opt" >> _synth_gen.ys
-	@echo "synth_ecp5 -top $(TOP_MODULE) -json synth.json" >> _synth_gen.ys
-	@echo "tee -o utilization.json stat -json" >> _synth_gen.ys
-	$(YOSYS) -s _synth_gen.ys -l synth.log -q
-	@rm -f _synth_gen.ys
+	mkdir -p $(SYNTH_DIR)
+	@echo "read_verilog -sv $(SV_SOURCES)" > $(SYNTH_DIR)/_synth_gen.ys
+	@echo "hierarchy -check -top $(TOP_MODULE)" >> $(SYNTH_DIR)/_synth_gen.ys
+	@echo "proc; flatten; opt" >> $(SYNTH_DIR)/_synth_gen.ys
+	@echo "synth_ecp5 -top $(TOP_MODULE) -json $(SYNTH_DIR)/synth.json" >> $(SYNTH_DIR)/_synth_gen.ys
+	@echo "tee -o $(SYNTH_DIR)/utilization.json stat -json" >> $(SYNTH_DIR)/_synth_gen.ys
+	$(YOSYS) -s $(SYNTH_DIR)/_synth_gen.ys -l $(SYNTH_DIR)/synth.log -q
+	@rm -f $(SYNTH_DIR)/_synth_gen.ys
 	@python3 -c "\
-import json, sys, math; \
-data = json.load(open('utilization.json')); \
+import json, sys; \
+data = json.load(open('$(SYNTH_DIR)/utilization.json')); \
 mods = data.get('modules', {}); \
 top = mods.get('$(TOP_MODULE)', mods.get('\\\\$(TOP_MODULE)', data.get('design', {}))); \
 cells = top.get('num_cells_by_type', {}); \
@@ -62,10 +69,8 @@ print('SYNTH: %s' % ('PASS' if ok else 'FAIL')); \
 sys.exit(0 if ok else 1)"
 
 # -- Verify hardware matches software --
-# Candidate: replace this with your verification approach.
 verify:
-# 	diff -u sw_output.txt hw_output.txt | head -40
-	cmp -s sw_output.txt hw_output.txt
+	cmp -s $(SW_OUT_DIR)/sw_output.txt $(HW_OUT_DIR)/hw_output.txt
 	@echo "VERIFY: PASS"
 
 # -- Full score --
@@ -74,8 +79,8 @@ score: sw hw verify
 	@echo "--- Scoring ---"
 	@python3 -c "\
 import re; \
-sw_txt=open('sw_metrics.txt').read(); \
-hw_txt=open('hw_metrics.txt').read(); \
+sw_txt=open('$(SW_OUT_DIR)/sw_metrics.txt').read(); \
+hw_txt=open('$(HW_OUT_DIR)/hw_metrics.txt').read(); \
 sw=float(re.search(r'SW_OPS_PER_SEC=([0-9.]+)', sw_txt).group(1)); \
 hw=float(re.search(r'HW_OPS_PER_SEC=([0-9.]+)', hw_txt).group(1)); \
 print('SW_OPS_PER_SEC=%.2f' % sw); \
@@ -83,4 +88,13 @@ print('HW_OPS_PER_SEC=%.2f' % hw); \
 print('SPEEDUP=%.4fx' % (hw/sw));"
 
 clean:
-	rm -rf obj_dir/ synth.json synth.log utilization.json _synth_gen.ys fir_sw sw_output.txt hw_output.txt
+	rm -rf $(SIM_DIR)/ \
+	       $(SYNTH_DIR)/synth.json \
+	       $(SYNTH_DIR)/synth.log \
+	       $(SYNTH_DIR)/utilization.json \
+	       $(SYNTH_DIR)/_synth_gen.ys \
+	       $(SW_OUT_DIR)/fir_sw \
+	       $(SW_OUT_DIR)/sw_output.txt \
+	       $(SW_OUT_DIR)/sw_metrics.txt \
+	       $(HW_OUT_DIR)/hw_output.txt \
+	       $(HW_OUT_DIR)/hw_metrics.txt

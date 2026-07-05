@@ -50,11 +50,11 @@ module fir_hw_tb;
     always #2.5 clk = ~clk;
 
     initial begin
-        $readmemh("fir_input_1024.txt", input_words);
+        $readmemh("fir_input.txt", input_words);
 
-        hw_file = $fopen("hw_output.txt", "w");
+        hw_file = $fopen("hw/output/hw_output.txt", "w");
         if (hw_file == 0) begin
-            $display("ERROR: could not open hw_output.txt");
+            $display("ERROR: could not open hw/output/hw_output.txt");
             $finish;
         end
 

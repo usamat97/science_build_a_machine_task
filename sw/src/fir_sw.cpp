@@ -13,9 +13,9 @@ static constexpr int TAPS = 16;
 static constexpr int REPEAT = 200;
 
 int main() {
-    std::ifstream input_file("fir_input_1024.txt");
+    std::ifstream input_file("fir_input.txt");
     if (!input_file) {
-        std::fprintf(stderr, "ERROR: could not open fir_input_1024.txt\n");
+        std::fprintf(stderr, "ERROR: could not open fir_input.txt\n");
         return 1;
     }
 
@@ -97,9 +97,9 @@ int main() {
     double output_samples = static_cast<double>(out_frames) * CHANNELS * REPEAT;
     double ops_per_sec = output_samples / seconds;
 
-    std::ofstream output_file("sw_output.txt");
+    std::ofstream output_file("sw/output/sw_output.txt");
     if (!output_file) {
-        std::fprintf(stderr, "ERROR: could not open sw_output.txt\n");
+        std::fprintf(stderr, "ERROR: could not open sw/output/sw_output.txt\n");
         return 1;
     }
 

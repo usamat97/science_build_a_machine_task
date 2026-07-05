@@ -4,4 +4,4 @@ OUTPUT_FRAMES=1009
 OUTPUT_SAMPLES=4036
 CYCLES=1024
 HW_OPS_PER_SEC=788281250.00
-- fir_hw_tb.sv:129: Verilog $finish
+- hw/src/fir_hw_tb.sv:129: Verilog $finish
